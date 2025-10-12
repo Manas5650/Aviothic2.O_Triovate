@@ -1,0 +1,11 @@
+Flask
+flask-cors
+flask-jwt-extended
+pandas
+numpy
+scikit-learn
+joblib
+yfinance
+python-dotenv
+werkzeug
+requests

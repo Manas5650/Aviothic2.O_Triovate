@@ -67,7 +67,31 @@ def predict():
     except Exception as e:
         print(f"Error in /predict: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
-    
+@app.route('/api/stock/<symbol>', methods=['GET'])
+def stock_info(symbol):
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+
+        # Return basic info
+        return jsonify({
+            "symbol": symbol,
+            "shortName": info.get("shortName", "N/A"),
+            "currentPrice": info.get("currentPrice", "N/A"),
+            "currency": info.get("currency", "USD"),
+            "open": info.get("open", "N/A"),
+            "high": info.get("dayHigh", "N/A"),
+            "low": info.get("dayLow", "N/A"),
+            "volume": info.get("volume", "N/A"),
+            "marketCap": info.get("marketCap", "N/A"),
+            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh", "N/A"),
+            "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow", "N/A"),
+            "marketTime": info.get("regularMarketTime", None)
+        }), 200
+
+    except Exception as e:
+        print("Error fetching stock info:", e)
+        return jsonify({"error": str(e)}), 500
 @app.route('/api/stock/history/<symbol>', methods=['GET'])
 def stock_history(symbol):
     try:

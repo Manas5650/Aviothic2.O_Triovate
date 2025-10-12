@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import os
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": ["https://comforting-hotteok-4c48fd.netlify.app"]}})
 
 @app.route('/predict', methods=['GET'])
 def predict():

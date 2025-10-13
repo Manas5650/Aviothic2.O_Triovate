@@ -70,27 +70,40 @@ def predict():
 @app.route('/api/stock/<symbol>', methods=['GET'])
 def stock_info(symbol):
     try:
-        ticker = yf.Ticker(symbol)
-        info = ticker.info
+        stock = yf.Ticker(symbol)
 
-        # Return basic info
-        return jsonify({
+        # ✅ Try safer fallback method
+        info = stock.fast_info if hasattr(stock, "fast_info") else {}
+
+        # Agar info empty hai, fallback karo normal info pe
+        if not info:
+            info = getattr(stock, "info", {})
+
+        # Agar dono hi empty hain
+        if not info:
+            return jsonify({"error": f"No data found for {symbol}"}), 404
+
+        # ✅ Safely extract values
+        data = {
             "symbol": symbol,
-            "shortName": info.get("shortName", "N/A"),
-            "currentPrice": info.get("currentPrice", "N/A"),
+            "shortName": info.get("shortName", symbol),
+            "currentPrice": info.get("last_price") or info.get("currentPrice") or 0,
             "currency": info.get("currency", "USD"),
-            "open": info.get("open", "N/A"),
-            "high": info.get("dayHigh", "N/A"),
-            "low": info.get("dayLow", "N/A"),
-            "volume": info.get("volume", "N/A"),
-            "marketCap": info.get("marketCap", "N/A"),
-            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh", "N/A"),
-            "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow", "N/A"),
+            "open": info.get("open", 0),
+            "high": info.get("dayHigh") or info.get("high") or 0,
+            "low": info.get("dayLow") or info.get("low") or 0,
+            "volume": info.get("volume", 0),
+            "marketCap": info.get("marketCap", 0),
+            "fiftyTwoWeekHigh": info.get("yearHigh") or info.get("fiftyTwoWeekHigh") or 0,
+            "fiftyTwoWeekLow": info.get("yearLow") or info.get("fiftyTwoWeekLow") or 0,
+            "changePercent": info.get("regularMarketChangePercent") or 0,
             "marketTime": info.get("regularMarketTime", None)
-        }), 200
+        }
+
+        return jsonify(data), 200
 
     except Exception as e:
-        print("Error fetching stock info:", e)
+        print("Error in /api/stock/<symbol>:", e)
         return jsonify({"error": str(e)}), 500
 @app.route('/api/stock/history/<symbol>', methods=['GET'])
 def stock_history(symbol):

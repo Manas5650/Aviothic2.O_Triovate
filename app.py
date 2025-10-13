@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import os
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://clever-jelly-578415.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
+CORS(app, resources={r"/*": {"origins": ["https://stellar-sfogliatella-78a37f.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 @app.route('/predict', methods=['GET'])
 def predict():
@@ -71,33 +71,78 @@ def predict():
 def stock_info(symbol):
     try:
         stock = yf.Ticker(symbol)
+        info = getattr(stock, "fast_info", {}) or getattr(stock, "info", {})
 
-        # ✅ Try safer fallback method
-        info = stock.fast_info if hasattr(stock, "fast_info") else {}
-
-        # Agar info empty hai, fallback karo normal info pe
-        if not info:
-            info = getattr(stock, "info", {})
-
-        # Agar dono hi empty hain
         if not info:
             return jsonify({"error": f"No data found for {symbol}"}), 404
 
-        # ✅ Safely extract values
+        # ✅ Safe data extraction
+        current_price = (
+            info.get("last_price")
+            or info.get("regularMarketPrice")
+            or info.get("currentPrice")
+            or info.get("previousClose")
+            or 0
+        )
+
+        open_price = round(info.get("open", 0) or 0, 2)
+        high_price = round(info.get("dayHigh") or info.get("high") or 0, 2)
+        low_price = round(info.get("dayLow") or info.get("low") or 0, 2)
+        market_cap = info.get("marketCap", 0) or 0
+
+        # ✅ Volume Handling
+        volume = (
+            info.get("volume")
+            or info.get("regularMarketVolume")
+            or info.get("totalVolume")
+            or 0
+        )
+
+        if not volume or volume == 0:
+            volume_display = "Data Not Available 📉"
+        else:
+            if volume >= 1e9:
+                volume_display = f"{round(volume / 1e9, 2)}B"
+            elif volume >= 1e6:
+                volume_display = f"{round(volume / 1e6, 2)}M"
+            else:
+                volume_display = f"{int(volume):,}"  # comma format (e.g. 125,000)
+
+        fifty_two_high = round(info.get("yearHigh") or info.get("fiftyTwoWeekHigh") or 0, 2)
+        fifty_two_low = round(info.get("yearLow") or info.get("fiftyTwoWeekLow") or 0, 2)
+
+        # ✅ Change Percent (previousClose fix)
+        previous_close = info.get("previousClose") or info.get("regularMarketPreviousClose") or current_price
+        if previous_close and previous_close != 0:
+            change_percent = round(((current_price - previous_close) / previous_close) * 100, 2)
+        else:
+            change_percent = 0.0
+
+        # ✅ Market Cap Formatting
+        if market_cap >= 1e12:
+            market_cap_display = f"{round(market_cap / 1e12, 2)}T"
+        elif market_cap >= 1e9:
+            market_cap_display = f"{round(market_cap / 1e9, 2)}B"
+        elif market_cap >= 1e6:
+            market_cap_display = f"{round(market_cap / 1e6, 2)}M"
+        else:
+            market_cap_display = str(market_cap)
+
+        # ✅ Final Data Response
         data = {
             "symbol": symbol,
             "shortName": info.get("shortName", symbol),
-            "currentPrice": info.get("last_price") or info.get("currentPrice") or 0,
-            "currency": info.get("currency", "USD"),
-            "open": info.get("open", 0),
-            "high": info.get("dayHigh") or info.get("high") or 0,
-            "low": info.get("dayLow") or info.get("low") or 0,
-            "volume": info.get("volume", 0),
-            "marketCap": info.get("marketCap", 0),
-            "fiftyTwoWeekHigh": info.get("yearHigh") or info.get("fiftyTwoWeekHigh") or 0,
-            "fiftyTwoWeekLow": info.get("yearLow") or info.get("fiftyTwoWeekLow") or 0,
-            "changePercent": info.get("regularMarketChangePercent") or 0,
-            "marketTime": info.get("regularMarketTime", None)
+            "currentPrice": round(current_price, 2),
+            "currency": info.get("currency", "INR"),
+            "open": open_price,
+            "high": high_price,
+            "low": low_price,
+            "volume": volume_display,
+            "marketCap": market_cap_display,
+            "fiftyTwoWeekHigh": fifty_two_high,
+            "fiftyTwoWeekLow": fifty_two_low,
+            "changePercent": change_percent,
+            "marketTime": info.get("regularMarketTime", None),
         }
 
         return jsonify(data), 200
@@ -105,7 +150,7 @@ def stock_info(symbol):
     except Exception as e:
         print("Error in /api/stock/<symbol>:", e)
         return jsonify({"error": str(e)}), 500
-@app.route('/api/stock/history/<symbol>', methods=['GET'])
+
 def stock_history(symbol):
     try:
         from_date = request.args.get('from', '2024-09-01')

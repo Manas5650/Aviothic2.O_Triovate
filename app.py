@@ -77,13 +77,23 @@ def stock_info(symbol):
             return jsonify({"error": f"No data found for {symbol}"}), 404
 
         # ✅ Safe data extraction
+        # ✅ Try to get the most recent available price
         current_price = (
-            info.get("last_price")
-            or info.get("regularMarketPrice")
+            info.get("regularMarketPrice")
             or info.get("currentPrice")
+            or info.get("lastPrice")
             or info.get("previousClose")
             or 0
         )
+
+# 🧠 Fallback: Try from fast_info (more live data)
+        try:
+            ticker = yf.Ticker(symbol)
+            fast_info = ticker.fast_info
+            if fast_info and fast_info.get("last_price"):
+                current_price = fast_info["last_price"]
+        except Exception as e:
+            print("⚠ Fast info fallback failed:", e)
 
         open_price = round(info.get("open", 0) or 0, 2)
         high_price = round(info.get("dayHigh") or info.get("high") or 0, 2)

@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import os
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://stellar-sfogliatella-78a37f.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
+CORS(app, resources={r"/*": {"origins": ["https://clever-jelly-578415.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 @app.route('/predict', methods=['GET'])
 def predict():
@@ -150,7 +150,7 @@ def stock_info(symbol):
     except Exception as e:
         print("Error in /api/stock/<symbol>:", e)
         return jsonify({"error": str(e)}), 500
-
+@app.route('/api/stock/history/<symbol>', methods=['GET'])
 def stock_history(symbol):
     try:
         from_date = request.args.get('from', '2024-09-01')

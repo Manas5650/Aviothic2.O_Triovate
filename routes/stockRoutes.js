@@ -3,9 +3,8 @@ const yahooFinance = require("yahoo-finance2").default;
 const router = express.Router();
 const axios = require("axios");
 const authMiddleware = require("./middleware/authMiddleware");
-// =========================
-// 1️⃣ Current Stock Price (Yahoo Finance)
-// =========================
+
+// Current Stock Price 
 
 router.get("/api/stock/history/:symbol", authMiddleware, async (req, res) => {
   try {
@@ -47,19 +46,15 @@ router.get("/:symbol", async (req, res) => {
   }
 });
 
-// =========================
-// 2️⃣ Historical Stock Data (Last 30 Days for frontend modal)
-// =========================
+// Historical Stock Data 
 router.get("/history/:symbol", async (req, res) => {
   try {
     const { symbol } = req.params;
 
-    // ✅ Calculate last 30 days automatically
     const today = new Date();
     const from = new Date();
     from.setFullYear(today.getFullYear() - 1);
 
-    // ✅ Fetch from Yahoo Finance
     const data = await yahooFinance.historical(symbol, {
       period1: from.toISOString().split("T")[0],
       period2: today.toISOString().split("T")[0],
@@ -70,7 +65,6 @@ router.get("/history/:symbol", async (req, res) => {
       return res.status(404).json({ message: "No historical data found" });
     }
 
-    // ✅ Format data
     const formatted = data.map((item) => ({
       date: new Date(item.date).toISOString().split("T")[0],
       close: item.close,
@@ -83,23 +77,17 @@ router.get("/history/:symbol", async (req, res) => {
       history: formatted,
     });
   } catch (error) {
-    console.error("❌ Error fetching last 30-day history:", error);
+    console.error(" Error fetching last 30-day history:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// =========================
-// 3️⃣ Yahoo Chart API — 1 Year Data (used for main chart)
-// =========================
-// =========================
-// 3️⃣ Yahoo Chart API — 1 Year Data (used for main chart)
-// =========================
+//  Yahoo Chart API 
 router.get("/chart/:symbol", async (req, res) => {
   try {
     const { symbol } = req.params;
     let { from, to } = req.query;
 
-    // ✅ Default dates if not provided
     const today = new Date();
     const defaultFrom = new Date();
     defaultFrom.setFullYear(today.getFullYear() - 1);
@@ -107,11 +95,9 @@ router.get("/chart/:symbol", async (req, res) => {
     if (!from) from = defaultFrom.toISOString().split("T")[0];
     if (!to) to = today.toISOString().split("T")[0];
 
-    // ✅ Convert to UNIX timestamps (required by Yahoo Finance API)
     const period1 = Math.floor(new Date(from).getTime() / 1000);
     const period2 = Math.floor(new Date(to).getTime() / 1000);
 
-    // ✅ Fetch chart data
     const result = await yahooFinance.chart(symbol, {
       period1,
       period2,
@@ -122,7 +108,6 @@ router.get("/chart/:symbol", async (req, res) => {
       return res.status(404).json({ message: "No chart data found" });
     }
 
-    // ✅ Format chart data
     const history = result.quotes.map((q) => ({
       date: q.date,
       open: q.open ?? 0,
@@ -132,7 +117,6 @@ router.get("/chart/:symbol", async (req, res) => {
       volume: q.volume ?? 0,
     }));
 
-    // ✅ Send response
     res.json({
       success: true,
       symbol,
@@ -147,9 +131,7 @@ router.get("/chart/:symbol", async (req, res) => {
   }
 });
 
-// =========================
-// 4️⃣ Multi-stock Historical Comparison
-// =========================
+// Multi-stock Historical Comparison
 router.get("/multi/history", async (req, res) => {
   try {
     let { symbols, from, to } = req.query;
@@ -176,7 +158,7 @@ router.get("/multi/history", async (req, res) => {
 
     res.json({ success: true, symbols: symbolList, data: allData });
   } catch (error) {
-    console.error("❌ Error in multi-stock history:", error);
+    console.error(" Error in multi-stock history:", error);
     res.status(500).json({ error: "Failed to fetch multi-stock data" });
   }
 });

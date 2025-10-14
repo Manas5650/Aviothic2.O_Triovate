@@ -4,9 +4,7 @@ from sklearn.linear_model import LinearRegression
 import pickle
 from datetime import datetime, timedelta
 
-# ✅ Train karne ke liye function
 def train_model():
-    # Sample dummy data (baad me live stock se replace karenge)
     dates = pd.date_range(start="2024-01-01", periods=300)
     close_prices = np.linspace(100, 250, 300) + np.random.normal(0, 5, 300)
     
@@ -22,10 +20,8 @@ def train_model():
     with open("ai/model.pkl", "wb") as f:
         pickle.dump(model, f)
 
-    print("✅ Model trained and saved successfully!")
+    print(" Model trained and saved successfully!")
 
-
-# ✅ Predict karne ke liye function
 def predict_next_days(n_days=30):
     with open("ai/model.pkl", "rb") as f:
         model = pickle.load(f)

@@ -6,7 +6,6 @@ const authRoutes = require("./routes/authRoutes");
 const stockRoutes = require("./routes/stockRoutes");
 const mongoose = require("mongoose");
 
-// Yahoo Finance import + suppress notices
 const yahooFinance = require("yahoo-finance2").default;
 yahooFinance.suppressNotices(["yahooSurvey", "ripHistorical"]);
 
@@ -22,7 +21,6 @@ mongoose
     .then(() => console.log("MongoDB Connected"))
     .catch((err) => console.log("Mongo Error:", err));
 
-// Default route
 app.get("/", (req, res) => {
     res.send("API is running...");
 });

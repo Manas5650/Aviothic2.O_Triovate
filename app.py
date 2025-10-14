@@ -6,43 +6,37 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import os
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://stellar-sfogliatella-78a37f.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
+CORS(app, resources={r"/*": {"origins": ["https://neon-queijadas-1eeac5.netlify.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 @app.route('/predict', methods=['GET'])
 def predict():
     try:
-        # Get query parameters
+
         symbol = request.args.get('symbol', 'TSLA').upper()
         days = int(request.args.get('days', 10))
 
-        # ✅ Fetch last 6 months stock data
         data = yf.download(symbol, period='6mo', interval='1d', progress=False)
 
         if data.empty:
             return jsonify({"success": False, "error": f"No data found for {symbol}"}), 404
 
-        # Prepare data
         data.reset_index(inplace=True)
         data['Day'] = np.arange(len(data))
         X = data[['Day']]
         y = data['Close']
 
-        # ✅ Train Linear Regression model
         model = LinearRegression()
         model.fit(X, y)
 
-        # Predict next n days
         last_day = X['Day'].iloc[-1]
         future_days = np.arange(last_day + 1, last_day + days + 1).reshape(-1, 1)
         predictions = model.predict(future_days)
 
-        # ✅ Format prediction data
         prediction_list = [
             {"day": int(i + 1), "predicted_close": round(float(pred.item()), 2)}
             for i, pred in enumerate(predictions)
         ]
 
-        # ✅ Determine trend
         start_price = float(prediction_list[0]["predicted_close"])
         end_price = float(prediction_list[-1]["predicted_close"])
         if end_price > start_price:
@@ -52,7 +46,6 @@ def predict():
         else:
             trend = "neutral"
 
-        # Confidence (mocked for now)
         confidence = round(np.random.uniform(90, 98), 2)
 
         return jsonify({
@@ -70,14 +63,13 @@ def predict():
 @app.route('/api/stock/<symbol>', methods=['GET'])
 def stock_info(symbol):
     try:
-        stock = yf.Ticker(symbol)
-        info = getattr(stock, "fast_info", {}) or getattr(stock, "info", {})
+        stock_obj = yf.Ticker(symbol)
+
+        info = getattr(stock_obj, "fast_info", {}) or getattr(stock_obj, "info", {}) or {}
 
         if not info:
             return jsonify({"error": f"No data found for {symbol}"}), 404
 
-        # ✅ Safe data extraction
-        # ✅ Try to get the most recent available price
         current_price = (
             info.get("regularMarketPrice")
             or info.get("currentPrice")
@@ -86,49 +78,62 @@ def stock_info(symbol):
             or 0
         )
 
-# 🧠 Fallback: Try from fast_info (more live data)
-        try:
-            ticker = yf.Ticker(symbol)
-            fast_info = ticker.fast_info
-            if fast_info and fast_info.get("last_price"):
-                current_price = fast_info["last_price"]
-        except Exception as e:
-            print("⚠ Fast info fallback failed:", e)
-
         open_price = round(info.get("open", 0) or 0, 2)
         high_price = round(info.get("dayHigh") or info.get("high") or 0, 2)
         low_price = round(info.get("dayLow") or info.get("low") or 0, 2)
         market_cap = info.get("marketCap", 0) or 0
 
-        # ✅ Volume Handling
-        volume = (
-            info.get("volume")
-            or info.get("regularMarketVolume")
-            or info.get("totalVolume")
-            or 0
-        )
+        volume = 0
+        volume_display = "0"
 
-        if not volume or volume == 0:
-            volume_display = "Data Not Available 📉"
+        try:
+          
+            volume = (
+                info.get("volume")
+                or info.get("regularMarketVolume")
+                or info.get("totalVolume")
+                or 0
+            )
+
+            
+            fast_info = getattr(stock_obj, "fast_info", {}) or {}
+            if not volume or volume == 0:
+                volume = (
+                    fast_info.get("last_volume")
+                    or fast_info.get("regularMarketVolume")
+                    or fast_info.get("volume")
+                    or 0
+                )
+
+            if not volume or volume == 0:
+                hist = stock_obj.history(period="10d", interval="1d")
+                if not hist.empty and "Volume" in hist.columns:
+                    non_zero_vol = hist[hist["Volume"] > 0]["Volume"]
+                    if not non_zero_vol.empty:
+                        volume = int(non_zero_vol.iloc[-1])
+                    else:
+                        volume = 0
+
+        except Exception as e:
+            print(f"Volume fallback failed for {symbol}: {e}")
+            volume = 0
+
+        if volume >= 1e9:
+            volume_display = f"{round(volume / 1e9, 2)}B"
+        elif volume >= 1e6:
+            volume_display = f"{round(volume / 1e6, 2)}M"
+        elif volume >= 1e3:
+            volume_display = f"{round(volume / 1e3, 2)}K"
+        elif volume > 0:
+            volume_display = f"{int(volume):,}"
         else:
-            if volume >= 1e9:
-                volume_display = f"{round(volume / 1e9, 2)}B"
-            elif volume >= 1e6:
-                volume_display = f"{round(volume / 1e6, 2)}M"
-            else:
-                volume_display = f"{int(volume):,}"  # comma format (e.g. 125,000)
-
+            volume_display = "0"
         fifty_two_high = round(info.get("yearHigh") or info.get("fiftyTwoWeekHigh") or 0, 2)
         fifty_two_low = round(info.get("yearLow") or info.get("fiftyTwoWeekLow") or 0, 2)
-
-        # ✅ Change Percent (previousClose fix)
+        
         previous_close = info.get("previousClose") or info.get("regularMarketPreviousClose") or current_price
-        if previous_close and previous_close != 0:
-            change_percent = round(((current_price - previous_close) / previous_close) * 100, 2)
-        else:
-            change_percent = 0.0
+        change_percent = round(((current_price - previous_close) / previous_close) * 100, 2) if previous_close else 0.0
 
-        # ✅ Market Cap Formatting
         if market_cap >= 1e12:
             market_cap_display = f"{round(market_cap / 1e12, 2)}T"
         elif market_cap >= 1e9:
@@ -138,9 +143,8 @@ def stock_info(symbol):
         else:
             market_cap_display = str(market_cap)
 
-        # ✅ Final Data Response
         data = {
-            "symbol": symbol,
+            "symbol": symbol.upper(),
             "shortName": info.get("shortName", symbol),
             "currentPrice": round(current_price, 2),
             "currency": info.get("currency", "INR"),
@@ -160,32 +164,28 @@ def stock_info(symbol):
     except Exception as e:
         print("Error in /api/stock/<symbol>:", e)
         return jsonify({"error": str(e)}), 500
+
 @app.route('/api/stock/history/<symbol>', methods=['GET'])
 def stock_history(symbol):
     try:
         from_date = request.args.get('from', '2024-09-01')
         to_date = request.args.get('to', '2024-09-30')
 
-        # ✅ Fetch data
         data = yf.download(symbol, start=from_date, end=to_date, interval='1d', progress=False)
 
         if data.empty:
             return jsonify({"message": "No data found"}), 404
 
-        # ✅ Reset index to make Date a normal column
         data.reset_index(inplace=True)
 
-        # ✅ Handle both 'Date' and possible 'Ticker' issues
         date_column = None
         for col in data.columns:
             if 'Date' in col:
                 date_column = col
                 break
         if date_column is None:
-            # fallback if date column missing
             date_column = data.columns[0]
 
-        # ✅ Prepare clean JSON
         history = []
         for _, row in data.iterrows():
             date_value = str(row[date_column]).split()[0] if pd.notna(row[date_column]) else "N/A"

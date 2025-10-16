@@ -1,3 +1,6 @@
+<img width="1349" height="636" alt="Screenshot 2025-10-16 061338" src="https://github.com/user-attachments/assets/57acc39a-5245-439f-9f7b-86374e20959f" />
+<img width="1327" height="622" alt="Screenshot 2025-10-16 061232" src="https://github.com/user-attachments/assets/9cfce07d-e6a0-432b-8cd3-cce01cd8d264" />
+<img width="1338" height="579" alt="Screenshot 2025-10-16 061134" src="https://github.com/user-attachments/assets/3f8da5cb-1b07-46e0-8392-a501d9fff2fb" />
 # Overview
 
 AI Stock Market Predictor is a real-time web application that uses Machine Learning (Linear Regression) to analyze live stock market data and predict future price trends.

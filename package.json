@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "stock-market-backend",
   "version": "1.0.0",
   "description": "",
@@ -22,7 +21,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-=======
   "name": "stock-market-frontend",
   "version": "0.1.0",
   "private": true,
@@ -71,6 +69,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
->>>>>>> 098f4d033daf38741e00f63e643a7cba43c2faab
   }
+}
 }
